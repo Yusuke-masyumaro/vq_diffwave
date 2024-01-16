@@ -10,7 +10,7 @@ from tqdm import tqdm
 import pandas as pd
 import os
 
-from VQ_model import get_vq_decoder
+from VQ_model import get_model
 from diffusion_model import VQ_diffwave
 import params as params
 
@@ -31,12 +31,13 @@ class Wav_dataset(Dataset):
 
     def __getitem__(self, idx):
         return self.data_list[idx]
-
-def train(model, encoder_vq, decoder, dataset, noise_scheduler, epochs):
+    
+def train(model, vq_model, dataset, noise_scheduler, epochs):
     data_loader = DataLoader(dataset, batch_size = params.diff_params['batch_size'], shuffle = True)
     model = model.to(device)
-    encoder_vq = encoder_vq.to(device)
-    decoder = decoder.to(device)
+    vq_model = vq_model.to(device)
+    encoder_vq = vq_model.vq_quantize_reshape
+    decoder = vq_model.decoder
     criterion = torch.nn.L1Loss()
     optimizer = torch.optim.Adam(model.parameters(), lr = params.diff_params['lr'])
 
@@ -75,16 +76,17 @@ def train(model, encoder_vq, decoder, dataset, noise_scheduler, epochs):
             torchaudio.save(f'sampling_wav/epoch={epoch}.wav', sample_wav.cpu(), sample_rate = params.diff_params['sampling_rate'])
 
 def main():
-    path = ''
-    df = pd.read_csv(path + 'meta/esc50.csv')
-    dataset = Wav_dataset(df, path)
+    df = pd.read_csv('../dataset/ESC-50-master/meta/esc50.csv')
+    wav_path = '../dataset/ESC-50-master/'
+    dataset = Wav_dataset(df, wav_path)
     noise_scheduler = DDPMScheduler(num_train_timesteps = 1000, beta_schedule = 'squaredcos_cap_vs')
     model = VQ_diffwave(res_channels = params.diff_params['res_channels'],
                         dilation_cycle_length = params.diff_params['dilation_cycle_length'],
                         res_layers = params.diff_params['res_layers'],
                         noise_schedule = noise_scheduler)
-    encoder_vq, decoder = get_vq_decoder()
-    train(model, encoder_vq, decoder, dataset, noise_scheduler, epochs = params.epochs)
+    vq_model = get_model(data_variance = None, inference = True)
+    vq_model.load_state_dict(torch.load('VQ_pth/model.pth'))
+    train(model, vq_model, dataset, noise_scheduler, epochs = params.epochs)
 
 if __name__ == '__main__':
     main()

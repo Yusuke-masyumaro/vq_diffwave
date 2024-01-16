@@ -104,7 +104,20 @@ class VQVAE(nn.Module):
         else:
             return {'z': z, 'x': x, 'vq_output': vq_quantize, 'output': output}
 
-def get_model(data_variance = None):
+class VQVAE_inference(nn.Module):
+    def __init__(self, encoder, decoder, vq, pre_vq_conv1):
+        self.encoder = encoder
+        self.decoder = decoder
+        self.vq = vq
+        self.pre_vq_conv1 = pre_vq_conv1
+    
+    def forward(self, x):
+        z_permute = z.permute(0, 2, 1).contiguous()
+        vq_quantize, embedding_idx, vq_loss = self.vq(z_permute)
+        vq_quantize_reshape = vq_quantize.permute(0, 2, 1).contiguous()
+        return vq_quantize_reshape, self.decoder
+
+def get_model(data_variance = None, inference = False):
     #encoder = Encoder(in_channels = params.in_channels, hidden_dim = params.hidden_dim, num_residual_layers = params.num_residual_layers, residual_hidden_dim = params.residual_hidden_dim)
     #decoder = Decoder(in_channels = params.embedding_dim, hidden_dim = params.hidden_dim, num_residual_layers = params.num_residual_layers, residual_hidden_dim = params.residual_hidden_dim)
     encoder = Encoder(in_channels = params.vq_params['in_channels'],
@@ -119,38 +132,10 @@ def get_model(data_variance = None):
     pre_vq_conv1 = nn.Conv1d(in_channels = params.vq_params['hidden_dim'], out_channels = params.vq_params['embedding_dim'], kernel_size = 1, stride = 1)
     #vq = VectorQuantize(dim = params.vq_params['embedding_dim'], codebook_size = params.vq_params['codebook_size'])
     vq = ResidualVQ(dim = params.vq_params['embedding_dim'],num_quantizers = 4, codebook_size = params.vq_params['codebook_size'], kmeans_init = True)
-    model = VQVAE(encoder, decoder, vq, pre_vq_conv1, data_variance = data_variance)
-    optimizer = torch.optim.Adam(model.parameters(), lr = params.vq_params['lr'])
-    return model, optimizer
-
-class Encoder_vq(nn.Module):
-    def __init__(self, encoder, pre_vq_conv1, vq, data_variance = None):
-        super(Encoder_vq, self).__init__()
-        self.encoder = encoder
-        self.vq = vq
-        self.pre_vq_conv1 = pre_vq_conv1
-        self.data_variance = data_variance
-
-    def forward(self, x):
-        z = self.pre_vq_conv1(self.encoder(x))
-        z_permute = z.permute(0, 2, 1).contiguous()
-        vq_quantize, embedding_idx, vq_loss = self.vq(z_permute)
-        vq_quantize_reshape = vq_quantize.permute(0, 2, 1).contiguous()
-        return vq_quantize_reshape
-
-def get_encoder_decoder(data_variance = None):
-    encoder = Encoder(in_channels = params.vq_params['in_channels'],
-                    hidden_dim = params.vq_params['hidden_dim'],
-                    num_residual_layers = params.vq_params['num_residual_layers'],
-                    residual_hidden_dim = params.vq_params['residual_hidden_dim'])
-
-    decoder = Decoder(in_channels = params.vq_params['embedding_dim'],
-                    hidden_dim = params.vq_params['hidden_dim'],
-                    num_residual_layers = params.vq_params['num_residual_layers'],
-                    residual_hidden_dim = params.vq_params['residual_hidden_dim'])
-
-    pre_vq_conv1 = nn.Conv1d(in_channels = params.vq_params['hidden_dim'], out_channels = params.vq_params['embedding_dim'], kernel_size = 1, stride = 1)
-    #vq = VectorQuantize(dim = params.vq_params['embedding_dim'], codebook_size = params.vq_params['codebook_size'])
-    vq = ResidualVQ(dim = params.vq_params['embedding_dim'],num_quantizers = 4, codebook_size = params.vq_params['codebook_size'], kmeans_init = True)
-    encoder_vq = Encoder_vq(encoder, decoder, pre_vq_conv1, vq, data_variance = data_variance)
-    return encoder_vq, decoder
+    if inference:
+        model = VQVAE_inference(encoder, decoder, vq, pre_vq_conv1)
+        return model
+    else:
+        model = VQVAE(encoder, decoder, vq, pre_vq_conv1, data_variance = data_variance)
+        optimizer = torch.optim.Adam(model.parameters(), lr = params.vq_params['lr'])
+        return model, optimizer
