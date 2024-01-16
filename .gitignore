@@ -1,4 +1,4 @@
-sampling/
+sampling_wav/
 src/VQ_pth/
 src/__pychache__/
 dataset/
