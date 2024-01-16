@@ -36,8 +36,6 @@ def train(model, vq_model, dataset, noise_scheduler, epochs):
     data_loader = DataLoader(dataset, batch_size = params.diff_params['batch_size'], shuffle = True)
     model = model.to(device)
     vq_model = vq_model.to(device)
-    encoder_vq = vq_model.vq_quantize_reshape
-    decoder = vq_model.decoder
     criterion = torch.nn.L1Loss()
     optimizer = torch.optim.Adam(model.parameters(), lr = params.diff_params['lr'])
 
@@ -45,16 +43,16 @@ def train(model, vq_model, dataset, noise_scheduler, epochs):
         losses = 0.0
         for x in data_loader:
             data = x.to(device)
-            vq_z = encoder_vq(data)
+            vq_z = vq_model(data)
             noise = torch.randn_like(vq_z).to(device)
             timesteps = torch.randint(0, noise_scheduler.num_train_timesteps, (noise.shape[0],), device = device)
-            noise_vq_z = noise_scheduler(vq_z, noise, timesteps)
+            noise_vq_z = noise_scheduler.add_noise(vq_z, noise, timesteps)
             noise_vq_z = noise_vq_z.to(device)
 
             output = model(noise_vq_z, timesteps)
-            output = output.squeeze(1)
+            #output = output.squeeze(1)
 
-            loss = criterion(output, noise_vq_z)
+            loss = criterion(output, noise)
             optimizer.zero_grad()
             loss.backward()
             losses += loss.item()
@@ -71,22 +69,22 @@ def train(model, vq_model, dataset, noise_scheduler, epochs):
                 vq_z = model(sample, t)
                 sample = noise_scheduler.step(vq_z, t, sample).prev_sample
                 sample = sample.squeeze(0)
-            sample_wav = decoder(sample)
+            sample_wav = vq_model.decoder(sample)
             os.makedirs('sampling_wav', exist_ok = True)
             torchaudio.save(f'sampling_wav/epoch={epoch}.wav', sample_wav.cpu(), sample_rate = params.diff_params['sampling_rate'])
 
 def main():
     df = pd.read_csv('../dataset/ESC-50-master/meta/esc50.csv')
-    wav_path = '../dataset/ESC-50-master/'
+    wav_path = '../dataset/ESC-50-master/audio/'
     dataset = Wav_dataset(df, wav_path)
-    noise_scheduler = DDPMScheduler(num_train_timesteps = 1000, beta_schedule = 'squaredcos_cap_vs')
+    noise_scheduler = DDPMScheduler(num_train_timesteps = 1000, beta_schedule = 'squaredcos_cap_v2')
     model = VQ_diffwave(res_channels = params.diff_params['res_channels'],
                         dilation_cycle_length = params.diff_params['dilation_cycle_length'],
                         res_layers = params.diff_params['res_layers'],
                         noise_schedule = noise_scheduler)
     vq_model = get_model(data_variance = None, inference = True)
     vq_model.load_state_dict(torch.load('VQ_pth/model.pth'))
-    train(model, vq_model, dataset, noise_scheduler, epochs = params.epochs)
+    train(model, vq_model, dataset, noise_scheduler, epochs = params.diff_params['epochs'])
 
 if __name__ == '__main__':
     main()

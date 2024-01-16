@@ -10,8 +10,8 @@ vq_params = {'in_channels': 1,
 
 diff_params = {'res_channels': 128,
             'dilation_cycle_length': 12,
-            'res_layers': 30,
-            'batch_size': 16,
+            'res_layers': 20,
+            'batch_size': 8,
             'lr': 2e-4,
-            'epochs': 1000,
+            'epochs': 100,
             'sampling_rate': 16000}

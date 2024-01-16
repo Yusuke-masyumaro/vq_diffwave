@@ -67,30 +67,30 @@ class ResidualBlock(nn.Module):
 class VQ_diffwave(nn.Module):
     def __init__(self, res_channels, dilation_cycle_length, res_layers, noise_schedule):
         super().__init__()
-        self.input_layer = Conv1d(1, res_channels, kernel_size = 1, stride = 1)
+        self.input_layer = Conv1d(64, res_channels, kernel_size = 1, stride = 1)
         self.diffusion_embedding = DiffusionEmbedding(len(noise_schedule))
         self.res_layers = nn.ModuleList([ResidualBlock(res_channels, 2 ** (i % dilation_cycle_length)) for i in range(res_layers)])
         self.skip_layer = Conv1d(res_channels, res_channels, kernel_size = 1, stride = 1)
-        self.output_layer = Conv1d(res_channels, 1, kernel_size = 1, stride = 1)
-        nn.init.zero_(self.output_layer.weight)
+        self.output_layer = Conv1d(res_channels, 64, kernel_size = 1, stride = 1)
+        nn.init.zeros_(self.output_layer.weight)
         
-        def forward(self, vq_z, diff_step):
-            x = self.input_layer(vq_z)
-            x = relu(x)
-            diff_step = self.diffusion_embedding(diff_step)
-            skip = None
-            for layer in self.res_layers:
-                x, skip_connect = layer(x, diff_step)
-                if skip is None:
-                    skip = skip_connect
-                else:
-                    skip = skip_connect + skip
+    def forward(self, vq_z, diff_step):
+        x = self.input_layer(vq_z)
+        x = relu(x)
+        diff_step = self.diffusion_embedding(diff_step)
+        skip = None
+        for layer in self.res_layers:
+            x, skip_connect = layer(x, diff_step)
+            if skip is None:
+                skip = skip_connect
+            else:
+                skip = skip_connect + skip
                     
-            x = skip / sqrt(len(self.res_layers))
-            x = self.skip_layer(x)
-            x = relu(x)
-            deff_z = self.output_layer(x)
-            return deff_z
+        x = skip / sqrt(len(self.res_layers))
+        x = self.skip_layer(x)
+        x = relu(x)
+        deff_z = self.output_layer(x)
+        return deff_z
 
 # Diffwave model
 class Diffwave(nn.Module):
@@ -99,7 +99,7 @@ class Diffwave(nn.Module):
         self.input_layer = Conv1d(1, res_channels, 1)
         self.diffusion_embedding = DiffusionEmbedding(len(noise_schedule))
         self.label_embedding = nn.Embedding(params.label_num, 512)
-        self.res_layers = nn.ModuleList([ResidualBlock(res_channels, 2 ** (i % dilation_cycle_length))for i in range(res_layers)])
+        self.res_layers = nn.ModuleList([ResidualBlock(res_channels,  ** (i % dilation_cycle_length))for i in range(res_layers)])
         self.skip_layer = Conv1d(res_channels, res_channels, 1)
         self.output_layer = Conv1d(res_channels, 1, 1)
         nn.init.zeros_(self.output_layer.weight)
