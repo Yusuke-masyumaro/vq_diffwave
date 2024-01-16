@@ -1,4 +1,4 @@
-./sampling/
-./src/VQ_pth/
-./src/__pychache__/
-./dataset/
+sampling/
+src/VQ_pth/
+src/__pychache__/
+dataset/
