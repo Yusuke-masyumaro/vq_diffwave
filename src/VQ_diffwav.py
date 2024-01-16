@@ -41,7 +41,7 @@ def train(model, vq_model, dataset, noise_scheduler, epochs):
 
     for epoch in range(epochs):
         losses = 0.0
-        for x in data_loader:
+        for x in tqdm(data_loader):
             data = x.to(device)
             vq_z = vq_model(data)
             noise = torch.randn_like(vq_z).to(device)
@@ -63,7 +63,8 @@ def train(model, vq_model, dataset, noise_scheduler, epochs):
         torch.save(model.state_dict(), 'model/diffwave.pth')
 
         with torch.no_grad():
-            validation_seed = torch.randn(1, params.vq_params['embedding_dim']).to(device)
+            validation_seed = torch.randn(1, 64, 110250).to(device)
+            print(validation_seed.shape)
             sample = validation_seed.clone()
             for i, t in enumerate(noise_scheduler.timesteps):
                 vq_z = model(sample, t)
@@ -71,10 +72,11 @@ def train(model, vq_model, dataset, noise_scheduler, epochs):
                 sample = sample.squeeze(0)
             sample_wav = vq_model.decoder(sample)
             os.makedirs('sampling_wav', exist_ok = True)
-            torchaudio.save(f'sampling_wav/epoch={epoch}.wav', sample_wav.cpu(), sample_rate = params.diff_params['sampling_rate'])
+            torchaudio.save(f'sampling_wav/epoch = {epoch}.wav', sample_wav.cpu(), sample_rate = params.diff_params['sampling_rate'])
 
 def main():
     df = pd.read_csv('../dataset/ESC-50-master/meta/esc50.csv')
+    #df = pd.read_csv('../dataset/ESC-50-master/meta/test.csv') #test
     wav_path = '../dataset/ESC-50-master/audio/'
     dataset = Wav_dataset(df, wav_path)
     noise_scheduler = DDPMScheduler(num_train_timesteps = 1000, beta_schedule = 'squaredcos_cap_v2')

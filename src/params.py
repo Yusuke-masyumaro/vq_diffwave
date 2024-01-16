@@ -14,4 +14,5 @@ diff_params = {'res_channels': 128,
             'batch_size': 8,
             'lr': 2e-4,
             'epochs': 100,
-            'sampling_rate': 16000}
+            'wav_length': 110250,
+            'sampling_rate': 22050}
