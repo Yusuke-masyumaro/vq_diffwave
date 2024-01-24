@@ -20,7 +20,7 @@ class ESC_dataset(Dataset):
         self.data_list = []
         for file_name in tqdm(df['filename'].values):
             wav, sr = torchaudio.load(self.path + file_name)
-            wav = torchaudio.transforms.Resample(orig_freq = sr, new_freq = 22050)(wav)
+            wav = torchaudio.transforms.Resample(orig_freq = sr, new_freq = 16000)(wav)
             self.data_list.append(wav)
 
     def __len__(self):

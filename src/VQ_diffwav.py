@@ -23,7 +23,7 @@ class Wav_dataset(Dataset):
         self.data_list = []
         for file_name in tqdm(df['filename'].values):
             wav, sr = torchaudio.load(self.path + file_name)
-            resample_wav = torchaudio.transforms.Resample(sr, 22050)(wav)
+            resample_wav = torchaudio.transforms.Resample(sr, params.diff_params['sampling_rate'])(wav)
             self.data_list.append(resample_wav)
 
     def __len__(self):
@@ -63,12 +63,13 @@ def train(model, vq_model, dataset, noise_scheduler, epochs):
         torch.save(model.state_dict(), 'model/diffwave.pth')
 
         with torch.no_grad():
-            validation_seed = torch.randn(1, 64, 110250).to(device)
+            validation_seed = torch.randn(1, 64, 80000).to(device)    
             sample = validation_seed.clone()
             for i, t in enumerate(noise_scheduler.timesteps):
                 vq_z = model(sample, t)
                 sample = noise_scheduler.step(vq_z, t, sample).prev_sample
             sample_wav = vq_model.decoder(sample)
+            sample_wav = sample_wav.squeeze(1)
             os.makedirs('sampling_wav', exist_ok = True)
             torchaudio.save(f'sampling_wav/epoch = {epoch}.wav', sample_wav.cpu(), sample_rate = params.diff_params['sampling_rate'])
 
