@@ -1,4 +1,5 @@
 sampling_wav/
 src/VQ_pth/
 src/__pychache__/
+src/test.ipynb
 dataset/
