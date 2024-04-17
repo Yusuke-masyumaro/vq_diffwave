@@ -7,4 +7,3 @@ RUN pip install -U pip
 RUN pip install torchaudio
 RUN pip install diffusers
 RUN pip install vector_quantize_pytorch
-

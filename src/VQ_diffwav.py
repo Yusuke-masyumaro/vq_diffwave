@@ -1,3 +1,4 @@
+##VQ_diffwaveの学習を行う
 from diffusers import DDPMScheduler
 import numpy as np
 import torch

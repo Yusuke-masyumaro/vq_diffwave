@@ -119,6 +119,21 @@ class VQVAE_inference(nn.Module):
         vq_quantize_reshape = vq_quantize.permute(0, 2, 1).contiguous()
         return vq_quantize_reshape
 
+class VQVAE_Unet(nn.Module):
+    def __init__(self, encoder, decoder, vq, pre_vq_conv1):
+        super(VQVAE_Unet, self).__init__()
+        self.encoder = encoder
+        self.decoder = decoder
+        self.vq = vq
+        self.pre_vq_conv1 = pre_vq_conv1
+        
+    def forward(self, x):
+        z = self.pre_vq_conv1(self.encoder(x))
+        z_permute = z.permute*(0, 2, 1).contiguous()
+        vq_quantize, embedding_idx, vq_loss - self.vq(z_permute)
+        vq_quantize_reshape = vq_quantize.permute(0, 2, 1).contiguous()
+        return vq
+
 def get_model(data_variance = None, inference = False):
     #encoder = Encoder(in_channels = params.in_channels, hidden_dim = params.hidden_dim, num_residual_layers = params.num_residual_layers, residual_hidden_dim = params.residual_hidden_dim)
     #decoder = Decoder(in_channels = params.embedding_dim, hidden_dim = params.hidden_dim, num_residual_layers = params.num_residual_layers, residual_hidden_dim = params.residual_hidden_dim)
